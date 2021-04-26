@@ -2,12 +2,10 @@ from __future__ import annotations
 from typing import List, Dict, Tuple, Optional
 import pathlib
 import json
-# import exchangelib
 import getpass
 import random
 import more_itertools
 import exchangelib
-# import rjc_email
 
 Email: str
 # interp. An email address as a string
