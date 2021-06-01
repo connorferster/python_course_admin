@@ -29,30 +29,32 @@ Members: Dict[Email, Name]
 M1 = {EM_1: N1}
 
 
-def send_workbooks_for_review(folder_path: List[str], account: exchangelib.Account, filler_email: Email) -> None:
+def send_workbooks_for_review(
+    folder_path: List[str],
+    account: exchangelib.Account,
+    json_path: pathlib.Path,
+    email_body: str
+    ) -> None:
     """
     Returns None. Forwards each email found in the inbox 'folder_name' (as sub folder of inbox),
     to a random recipient chosen from one of the other email senders of the emails found in 'folder_name'.
+    Creates a JSON file of email recipient pairings in the CWD. 
 
-    If preview is True then, before sending, a preview of the first three emails will be shown along
-    with a prompt asking the user to confirm the send before sending. This is to prevent accidental sending
-    of potentially many, many emails accidentally.
+    'folder_path': a list of sub-folders to get to the appropriate folder path in the 'account' inbox.
+        No need to include the "inbox" folder.
+    'account': an ExchangeLib account
+    'json_path': a path at which to create the JSON pairings file
+    'email_body': the body of the email to send. Must include {person} and {workbook_title} for formatting.
     """
-    cwd = pathlib.Path.cwd()
+    cwd = json_path
     workbook_title = folder_path[-1] # The last folder name
     target_folder = navigate_to_target_folder(folder_path, account)
     members = get_email_addresses_from_msgs(target_folder)
-    random_pairings = create_random_pairings(members, filler_email)
+    random_pairings = create_random_pairings(members)
     json_dump_pairings(random_pairings, cwd / (workbook_title + ".json"))
     email_subject = f"For Review: {workbook_title}"
     for pairing in random_pairings:
         pers_a, pers_b = pairing
-        email_body = (
-            "Please review {person}'s notebook for {workbook_title} by following the criteria given in the Teams group this week. "
-            "You will have to download the .ipynb attachment and upload it to your Jupyter account to view and edit.\n\n"
-            "Please submit your review using the python_course.submit_workbook() function by 9am on Thursday (sharp) using the subject line "
-            "given in this week's Teams post."
-        )
         msg_a = next(msg for msg in target_folder.filter(sender=pers_a))
         msg_b = next(msg for msg in target_folder.filter(sender=pers_b))
         forward_email(msg_a, pers_b, email_subject, email_body.format(person=members[pers_a], workbook_title=workbook_title))
@@ -62,9 +64,13 @@ def send_workbooks_for_review(folder_path: List[str], account: exchangelib.Accou
 
 def return_reviewed_notebooks(folder_path: List[str], account: exchangelib.Account, json_pairings: pathlib.Path) -> List[Email]:
     """
-    Returns a list of "unhappy members", people's email addresses who did not receive a reviewed notebook email. 
+    Returns a list of "unhappy members", people's email addresses who did not
+    receive a reviewed notebook email forward.
     Forwards each email found in the Exchange 'account' 'folder_path' to the recipient who is matched to the 
     email sender as described in 'json_pairings' using the Exchange account, 'account'.
+
+    'folder_path': A list of sub directories to navigate to the correct Exchange Inbox folder. No need
+        to include the 'inbox'.
 
     For example, if an email in 'folder_path' was from anouche@domain.com and "anouche@domain.com" was found
     paired with "riley@domain.com" in the 'json_pairings' list, then the email from anouche@domain.com would

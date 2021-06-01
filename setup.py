@@ -17,8 +17,8 @@ DESCRIPTION = 'Instructor-side tools for the python course'
 URL = 'https://github.com/connorferster/python_course_admin'
 EMAIL = 'connorferster@gmail.com'
 AUTHOR = 'Connor Ferster'
-REQUIRES_PYTHON = '>=3.6.0'
-VERSION = '0.0.1'
+REQUIRES_PYTHON = '>=3.7.0'
+VERSION = '0.0.2'
 
 # What packages are required for this module to be executed?
 REQUIRED = [
@@ -30,7 +30,7 @@ EXTRAS = {
     # 'fancy feature': ['django'],
 }
 
-# The rest you shouldn't have to touch too much :)
+# The rest you shouldn't have to touch too much :) #
 # ------------------------------------------------
 # Except, perhaps the License and Trove Classifiers!
 # If you do change the License, remember to change the Trove Classifier for that!
