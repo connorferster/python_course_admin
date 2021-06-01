@@ -18,7 +18,7 @@ URL = 'https://github.com/connorferster/python_course_admin'
 EMAIL = 'connorferster@gmail.com'
 AUTHOR = 'Connor Ferster'
 REQUIRES_PYTHON = '>=3.7.0'
-VERSION = '0.0.2'
+VERSION = '0.0.3'
 
 # What packages are required for this module to be executed?
 REQUIRED = [

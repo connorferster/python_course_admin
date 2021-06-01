@@ -7,6 +7,8 @@ import random
 import more_itertools
 import exchangelib
 
+__version__ = "0.0.3"
+
 Email: str
 # interp. An email address as a string
 # Examples: 
