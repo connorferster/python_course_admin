@@ -35,7 +35,8 @@ def send_workbooks_for_review(
     folder_path: List[str],
     account: exchangelib.Account,
     json_path: pathlib.Path,
-    email_body: str
+    email_body: str,
+    test_print = True
     ) -> None:
     """
     Returns None. Forwards each email found in the inbox 'folder_name' (as sub folder of inbox),
@@ -47,24 +48,38 @@ def send_workbooks_for_review(
     'account': an ExchangeLib account
     'json_path': a path at which to create the JSON pairings file
     'email_body': the body of the email to send. Must include {person} and {workbook_title} for formatting.
+    'test_print': If True, will not send email but will perform all steps and print a test log
     """
     cwd = json_path
     workbook_title = folder_path[-1] # The last folder name
     target_folder = navigate_to_target_folder(folder_path, account)
+    if test_print:
+        print(f"Target email folder: {target_folder}")
     members = get_email_addresses_from_msgs(target_folder)
     random_pairings = create_random_pairings(members)
     json_dump_pairings(random_pairings, cwd / (workbook_title + ".json"))
     email_subject = f"For Review: {workbook_title}"
-    for pairing in random_pairings:
-        pers_a, pers_b = pairing
-        msg_a = next(msg for msg in target_folder.filter(sender=pers_a))
-        msg_b = next(msg for msg in target_folder.filter(sender=pers_b))
-        forward_email(msg_a, pers_b, email_subject, email_body.format(person=members[pers_a], workbook_title=workbook_title))
-        forward_email(msg_b, pers_a, email_subject, email_body.format(person=members[pers_b], workbook_title=workbook_title))
-    return
+    if not test_print:
+        for pairing in random_pairings:
+            pers_a, pers_b = pairing
+            msg_a = next(msg for msg in target_folder.filter(sender=pers_a))
+            msg_b = next(msg for msg in target_folder.filter(sender=pers_b))
+            forward_email(msg_a, pers_b, email_subject, email_body.format(person=members[pers_a], workbook_title=workbook_title))
+            forward_email(msg_b, pers_a, email_subject, email_body.format(person=members[pers_b], workbook_title=workbook_title))
+            print(f"Pairing: {pers_a}, {pers_b} -> Sent: {email_subject}")
+        return
+    else:
+        pers_a, pers_b = random_pairings[0]
+        print(email_body.format(person=members[pers_a], workbook_title=workbook_title))
+        
     
 
-def return_reviewed_notebooks(folder_path: List[str], account: exchangelib.Account, json_pairings: pathlib.Path) -> List[Email]:
+def return_reviewed_notebooks(
+    folder_path: List[str],
+    account: exchangelib.Account,
+    email_body: str,
+    json_pairings: pathlib.Path
+    ) -> List[Email]:
     """
     Returns a list of "unhappy members", people's email addresses who did not
     receive a reviewed notebook email forward.
@@ -78,11 +93,6 @@ def return_reviewed_notebooks(folder_path: List[str], account: exchangelib.Accou
     paired with "riley@domain.com" in the 'json_pairings' list, then the email from anouche@domain.com would
     be forwarded to riley@domain.com.
     """
-    email_body = (
-        "{name} reviewed your workbook for {workbook_title} and has returned it. Please download the attachment and upload to your Jupyter server"
-        " to see their comments."
-    )
-
     email_subject = ("Your workbook, {workbook_title}, reviewed!")
 
     workbook_title = folder_path[-1]
@@ -108,7 +118,7 @@ def return_reviewed_notebooks(folder_path: List[str], account: exchangelib.Accou
     all_members = set([person for pairing in pairings for person in pairing])
     happy_members = set(members_receiving_emails)
     unhappy_members = all_members - happy_members
-    print("No matches: ", no_matches)
+    print("Unhappy members: ", unhappy_members)
     return unhappy_members
 
 
@@ -122,6 +132,9 @@ def email_unhappy_members(
     Returns None. Emails the people in 'unhappy_members' who submitted a workbook for review but did not receive a returned
     reviewed notebook.
     """
+    if not unhappy_members:
+        print("No unhappy members :)")
+        return
     alt_email_subject = ("Your workbook, {workbook_title}, was not reviewed :(") 
     alt_email_body = (
         "Your reviewer was not able to return your reviewed notebook (probably busy, yeah?)."
@@ -164,6 +177,7 @@ def navigate_to_target_folder(folder_path: List[str], account: exchangelib.Accou
     return target_folder
 
 
+
 def create_random_pairings(submissions: Members, filler: Optional[Email] = None) -> List[Tuple[Email, Email]]:
     """
     Returns a list of tuple pairs representing random pairings of the member
@@ -184,14 +198,13 @@ def find_pair_match(email_a: Email, pairings: List[List[Email, Email]]) -> Optio
     Returns None if no match found.
     """
     for pairing in pairings:
-        print(pairing)
         pers_a, pers_b = pairing
         if pers_a == email_a:
             return pers_b
         elif pers_b == email_a:
             return pers_a
     else:
-        return None
+        return
 
 
 def json_dump_pairings(pairings: List[tuple], file_path: pathlib.Path) -> None:
@@ -235,9 +248,11 @@ def connect_to_exchange(server: str, domain: str, email: str, username: str) -> 
     """
     credentials = exchangelib.Credentials(username= f'{domain}\\{username}', 
                                           password=getpass.getpass("Exchange pass:"))
-    config = exchangelib.Configuration(server=server, credentials=credentials)
+    # config = exchangelib.Configuration(server=server, credentials=credentials)
+    config = exchangelib.Configuration(server='outlook.office365.com', credentials=credentials)
+
     return exchangelib.Account(primary_smtp_address=email, autodiscover=False, 
-                   config = config, access_type='delegate')
+                   config = config, access_type=exchangelib.DELEGATE)
 
 
 def forward_email(msg: exchangelib.Message, fwd_to: Email, subject: str, body: Optional[str] = None) -> None:
